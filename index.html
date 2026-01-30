@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard B3 — Profissional</title>
+<style>
+  :root {
+    --bg: #f2f2f2; --card: #fff; --text: #000; --btn: #e0e0e0;
+    --highlight: #3498db;
+    --heatmap-bancos: #d1e7fd;
+    --heatmap-energia: #fce5cd;
+    --heatmap-commodities: #d5eadf;
+    --heatmap-consumo: #f9d5e5;
+    --heatmap-tecnologia: #c8d6e5;
+    --heatmap-transportes: #fbe4e4;
+    --heatmap-saude: #d3e4cd;
+    --heatmap-telecom: #dbe7f5;
+    --heatmap-industria: #f0e6e6;
+    --heatmap-outros: #e0d7f7;
+  }
+  body.dark {
+    --bg: #121212; --card: #1e1e1e; --text: #fff; --btn: #333;
+  }
+  body {
+    margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text);
+    display: flex; min-height: 100vh;
+  }
+  /* Painel lateral heatmap */
+  #heatmap-panel {
+    width: 220px; background: var(--card); padding: 16px; border-right: 1px solid #ccc;
+    box-sizing: border-box; overflow-y: auto;
+  }
+  #heatmap-panel h2 {
+    margin-top: 0; font-size: 20px; text-align: center;
+  }
+  .heatmap-sector {
+    margin: 6px 0; padding: 8px; border-radius: 6px;
+    font-weight: bold; cursor: default;
+    user-select: none;
+  }
+  .heatmap-sector span.count {
+    float: right; font-weight: normal; font-size: 14px;
+  }
+  /* Grid principal */
+  #main-content {
+    flex: 1; display: flex; flex-direction: column;
+  }
+  header {
+    text-align: center; padding: 16px 0 8px;
+    background: var(--card); box-shadow: 0 1px 5px rgb(0 0 0 / 0.1);
+  }
+  header h1 {
+    margin: 0; font-weight: 700;
+  }
+  .controls {
+    background: var(--card);
+    padding: 10px 16px;
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+  }
+  .controls > * {
+    margin: 5px 6px;
+  }
+  button {
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    background: var(--btn);
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+  }
+  button:hover {
+    background: var(--highlight);
+    color: #fff;
+  }
+  input, select {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #999;
+    font-size: 14px;
+  }
+  /* Grid dos cards */
+  #grid {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(var(--columns, 3), 1fr);
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: var(--cardHeight, 320px);
+    box-shadow: 0 1px 6px rgb(0 0 0 / 0.1);
+  }
+  .card h3 {
+    margin: 0 0 8px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--highlight);
+  }
+  .chart {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+  }
+  /* Botão voltar ao topo */
+  #btn-top {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    z-index: 9999;
+    background: var(--highlight);
+    color: #fff;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+    line-height: 44px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+    user-select: none;
+  }
+  #btn-top:hover {
+    background: #1d6db9;
+  }
+  /* Fullscreen */
+  .fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 10000 !important;
+    background: var(--card) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 12px !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+  }
+  .fullscreen .chart {
+    height: 100% !important;
+  }
+</style>
+</head>
+<body>
+  <div id="heatmap-panel">
+    <h2>Heatmap por Setor</h2>
+    <!-- setores serão gerados aqui -->
+  </div>
+  <div id="main-content">
+    <header><h1>Dashboard B3 — Profissional</h1></header>
+    <div class="controls">
+      <input type="text" id="filtroNome" placeholder="Filtrar por ticker" />
+      <select id="filtroSetor">
+        <option value="">Todos os setores</option>
+        <option value="Bancos">Bancos</option>
+        <option value="Energia">Energia</option>
+        <option value="Commodities">Commodities</option>
+        <option value="Consumo">Consumo</option>
+        <option value="Tecnologia">Tecnologia</option>
+        <option value="Transportes">Transportes</option>
+        <option value="Saúde">Saúde</option>
+        <option value="Telecom">Telecom</option>
+        <option value="Industria">Industria</option>
+        <option value="Outros">Outros</option>
+      </select>
+      <select id="filtroOrdenar">
+        <option value="ticker">Ordenar por Ticker (A-Z)</option>
+        <option value="setor">Ordenar por Setor</option>
+      </select>
+
+      <select id="filtroIntervalo" title="Intervalo de tempo">
+        <option value="1">1 min</option>
+        <option value="5">5 min</option>
+        <option value="15">15 min</option>
+        <option value="30">30 min</option>
+        <option value="60">1 hora</option>
+        <option value="D" selected>Diário</option>
+      </select>
+
+      <select id="filtroGrafico" title="Tipo de gráfico">
+        <option value="candles" selected>Candle</option>
+        <option value="area">Área</option>
+      </select>
+
+      <select id="filtroIndicador" title="Indicadores">
+        <option value="nenhum" selected>Sem Indicadores</option>
+        <option value="VWAP">VWAP</option>
+        <option value="MediaMovel20">MM 20</option>
+        <option value="MediaMovel50">MM 50</option>
+        <option value="MediaMovel20_50">MM 20+50</option>
+        <option value="Volume">Volume</option>
+        <option value="VWAP_Volume">VWAP + Volume</option>
+        <option value="MediaMovel20_Volume">MM 20 + Volume</option>
+      </select>
+
+      <button id="btnTema">🌙 Claro/Escuro</button>
+      <button id="btnSalvar">💾 Salvar Layout</button>
+      <button id="btnReset">🔄 Resetar Layout</button>
+    </div>
+    <div id="grid"></div>
+  </div>
+  <div id="btn-top" title="Voltar ao topo">⬆️</div>
+
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <script>
+  (() => {
+    // === Variáveis globais ===
+    const grid = document.getElementById('grid');
+    const filtroNome = document.getElementById('filtroNome');
+    const filtroSetor = document.getElementById('filtroSetor');
+    const filtroOrdenar = document.getElementById('filtroOrdenar');
+    const filtroIntervalo = document.getElementById('filtroIntervalo');
+    const filtroGrafico = document.getElementById('filtroGrafico');
+    const filtroIndicador = document.getElementById('filtroIndicador');
+    const btnTema = document.getElementById('btnTema');
+    const btnSalvar = document.getElementById('btnSalvar');
+    const btnReset = document.getElementById('btnReset');
+    const heatmapPanel = document.getElementById('heatmap-panel');
+    const btnTopo = document.getElementById('btn-top');
+    const mainContent = document.getElementById('main-content');
+
+    // Configurações padrões e estado
+    let temaAtual = localStorage.getItem('tema') || 'light';
+    let intervaloAtual = localStorage.getItem('intervalo') || 'D';
+    let tipoGrafico = localStorage.getItem('tipoGrafico') || 'candles';
+    let indicadorAtual = localStorage.getItem('indicador') || 'nenhum';
+    let colunas = Number(localStorage.getItem('colunas')) || 3;
+    let alturaCard = Number(localStorage.getItem('alturaCard')) || 320;
+
+    // Lista ativos exemplo simplificada (você pode colocar os 167 ativos aqui)
+    const ativosBrutos = [
+      {ticker:"PETR4",setor:"Energia"},{ticker:"COGN3",setor:"Tecnologia"},
+      {ticker:"MGLU3",setor:"Consumo"},{ticker:"BBAS3",setor:"Bancos"},
+      {ticker:"VAMO3",setor:"Outros"},{ticker:"ITSA4",setor:"Bancos"},
+      {ticker:"CSAN3",setor:"Commodities"},{ticker:"ABEV3",setor:"Consumo"},
+      {ticker:"VALE3",setor:"Commodities"},{ticker:"BBDC4",setor:"Bancos"},
+      {ticker:"HAPV3",setor:"Saúde"},{ticker:"B3SA3",setor:"Bancos"},
+      {ticker:"BEEF3",setor:"Consumo"},{ticker:"ASAI3",setor:"Consumo"},
+      {ticker:"CPLE3",setor:"Energia"},{ticker:"CMIG4",setor:"Energia"},
+      {ticker:"RAIL3",setor:"Transportes"},{ticker:"ITUB4",setor:"Bancos"},
+      {ticker:"PETR3",setor:"Energia"},{ticker:"MRVE3",setor:"Consumo"},
+      {ticker:"PRIO3",setor:"Energia"},{ticker:"LREN3",setor:"Consumo"},
+      {ticker:"GOAU4",setor:"Commodities"},{ticker:"GGBR4",setor:"Commodities"},
+      {ticker:"JHSF3",setor:"Consumo"},{ticker:"CVCB3",setor:"Consumo"},
+      {ticker:"TIMS3",setor:"Tecnologia"},{ticker:"USIM5",setor:"Commodities"},
+      {ticker:"RADL3",setor:"Consumo"},{ticker:"ANIM3",setor:"Consumo"},
+      {ticker:"CSNA3",setor:"Commodities"},{ticker:"ODPV3",setor:"Consumo"},
+      {ticker:"CMIN3",setor:"Commodities"},{ticker:"VBBR3",setor:"Consumo"},
+      {ticker:"CEAB3",setor:"Consumo"},{ticker:"VIVT3",setor:"Telecom"},
+      {ticker:"BPAC11",setor:"Bancos"},{ticker:"AMBP3",setor:"Consumo"},
+      {ticker:"ENEV3",setor:"Energia"},{ticker:"FLRY3",setor:"Saúde"},
+      {ticker:"SBSP3",setor:"Energia"},{ticker:"BBSE3",setor:"Bancos"},
+      {ticker:"WEGE3",setor:"Industria"},{ticker:"MULT3",setor:"Consumo"},
+      {ticker:"UGPA3",setor:"Consumo"},{ticker:"QUAL3",setor:"Saúde"},
+      {ticker:"HYPE3",setor:"Saúde"},{ticker:"CYRE3",setor:"Consumo"},
+      {ticker:"KLBN4",setor:"Commodities"},{ticker:"RENT3",setor:"Consumo"},
+      {ticker:"BRKM5",setor:"Commodities"},{ticker:"EQTL3",setor:"Energia"},
+      {ticker:"MOVI3",setor:"Consumo"},{ticker:"PCAR3",setor:"Consumo"},
+      {ticker:"KLBN11",setor:"Commodities"},{ticker:"SMTO3",setor:"Consumo"},
+      {ticker:"BBDC3",setor:"Bancos"},{ticker:"BPAN4",setor:"Bancos"},
+      {ticker:"ECOR3",setor:"Commodities"},{ticker:"GUAR3",setor:"Consumo"},
+      {ticker:"GRND3",setor:"Consumo"},{ticker:"SANB11",setor:"Bancos"},
+      {ticker:"SUZB3",setor:"Commodities"},{ticker:"BRAP4",setor:"Commodities"},
+      {ticker:"HBOR3",setor:"Consumo"},{ticker:"EZTC3",setor:"Consumo"},
+      {ticker:"YDUQ3",setor:"Saúde"},{ticker:"SLCE3",setor:"Consumo"},
+      {ticker:"EGIE3",setor:"Energia"},{ticker:"TEND3",setor:"Consumo"},
+      {ticker:"TAEE11",setor:"Energia"},{ticker:"TOTS3",setor:"Consumo"},
+      {ticker:"ALPA4",setor:"Consumo"},{ticker:"LWSA3",setor:"Commodities"},
+      {ticker:"IGTI11",setor:"Bancos"},{ticker:"CPFE3",setor:"Energia"},
+      {ticker:"SAPR11",setor:"Energia"},{ticker:"ENGI11",setor:"Energia"},
+      {ticker:"DXCO3",setor:"Consumo"},{ticker:"CAML3",setor:"Consumo"},
+      {ticker:"BRSR6",setor:"Bancos"},{ticker:"POSI3",setor:"Consumo"},
+      {ticker:"IRBR3",setor:"Bancos"},{ticker:"SAPR4",setor:"Energia"},
+      {ticker:"ALUP11",setor:"Commodities"},{ticker:"KLBN3",setor:"Commodities"},
+      {ticker:"CASH3",setor:"Consumo"},{ticker:"LIGT3",setor:"Energia"},
+      {ticker:"ITUB3",setor:"Bancos"},{ticker:"ABCB4",setor:"Bancos"},
+      {ticker:"USIM3",setor:"Commodities"},{ticker:"BMGB4",setor:"Bancos"},
+      {ticker:"GFSA3",setor:"Consumo"},{ticker:"MDIA3",setor:"Consumo"},
+      {ticker:"TAEE4",setor:"Energia"},{ticker:"UNIP6",setor:"Saúde"},
+      {ticker:"SAPR3",setor:"Energia"},{ticker:"AGRO3",setor:"Commodities"},
+      {ticker:"TGMA3",setor:"Consumo"},{ticker:"TAEE3",setor:"Energia"},
+      {ticker:"AMAR3",setor:"Consumo"},{ticker:"ITSA3",setor:"Bancos"},
+      {ticker:"CMIG3",setor:"Energia"},{ticker:"GGBR3",setor:"Commodities"},
+      {ticker:"BMEB4",setor:"Bancos"},{ticker:"IGTI3",setor:"Bancos"},
+      {ticker:"SANB3",setor:"Bancos"},{ticker:"MEAL3",setor:"Consumo"},
+      {ticker:"GOAU3",setor:"Commodities"},{ticker:"TCSA3",setor:"Consumo"},
+      {ticker:"SANB4",setor:"Bancos"},{ticker:"BRKM3",setor:"Commodities"},
+      {ticker:"UNIP3",setor:"Saúde"},{ticker:"ALUP3",setor:"Commodities"},
+      {ticker:"BRSR3",setor:"Bancos"},{ticker:"ENGI4",setor:"Energia"},
+      {ticker:"BRAP3",setor:"Commodities"},{ticker:"ALUP4",setor:"Commodities"},
+      {ticker:"LREN4",setor:"Consumo"},{ticker:"RAPT4",setor:"Consumo"},
+      {ticker:"VVAR3",setor:"Consumo"},{ticker:"COGN4",setor:"Tecnologia"},
+      {ticker:"HYPE4",setor:"Saúde"},{ticker:"RADL4",setor:"Consumo"},
+      {ticker:"BPAN3",setor:"Bancos"},{ticker:"PRIO4",setor:"Energia"},
+      {ticker:"FLRY4",setor:"Saúde"},{ticker:"BRML3",setor:"Consumo"},
+      {ticker:"BBSE4",setor:"Bancos"},{ticker:"LAME4",setor:"Consumo"},
+      {ticker:"CESP6",setor:"Energia"},{ticker:"SAPR6",setor:"Energia"},
+      {ticker:"ENBR3",setor:"Energia"},{ticker:"QUAL4",setor:"Saúde"},
+      {ticker:"CSAN4",setor:"Commodities"},{ticker:"RDOR3",setor:"Saúde"},
+      {ticker:"BRPR3",setor:"Consumo"},{ticker:"MRVE4",setor:"Consumo"},
+      {ticker:"CMIG2",setor:"Energia"},{ticker:"CCRO3",setor:"Consumo"},
+      {ticker:"SULA11",setor:"Bancos"},{ticker:"FESA4",setor:"Commodities"},
+      {ticker:"MYPK3",setor:"Consumo"},{ticker:"OIBR3",setor:"Telecom"},
+      {ticker:"REDE3",setor:"Telecom"},{ticker:"TUPY3",setor:"Industria"},
+      {ticker:"TIMS4",setor:"Tecnologia"},{ticker:"UGPA4",setor:"Consumo"},
+      {ticker:"USIM6",setor:"Commodities"},{ticker:"WHRL4",setor:"Consumo"},
+      {ticker:"VIVT4",setor:"Telecom"},{ticker:"WEGE3",setor:"Industria"},
+      {ticker:"WIZS3",setor:"Tecnologia"},{ticker:"YDUQ4",setor:"Saúde"},
+      {ticker:"ZENV3",setor:"Consumo"}
+    ];
+
+    // Mapeamento cores heatmap por setor
+    const coresHeatmap = {
+      "Bancos": "var(--heatmap-bancos)",
+      "Energia": "var(--heatmap-energia)",
+      "Commodities": "var(--heatmap-commodities)",
+      "Consumo": "var(--heatmap-consumo)",
+      "Tecnologia": "var(--heatmap-tecnologia)",
+      "Transportes": "var(--heatmap-transportes)",
+      "Saúde": "var(--heatmap-saude)",
+      "Telecom": "var(--heatmap-telecom)",
+      "Industria": "var(--heatmap-industria)",
+      "Outros": "var(--heatmap-outros)"
+    };
+
+    // Estado atual dos widgets carregados para possível descarte (não usado no lazy load, mas deixa organizado)
+    const widgetsAtivos = new Map();
+
+    // ======================
+    // Função para carregar widget TradingView no container (lazy load)
+    // ======================
+    function criarWidget(id, ticker){
+      if(widgetsAtivos.has(id)) return; // já criado
+      const widget = new TradingView.widget({
+        container_id: id,
+        symbol: `BMFBOVESPA:${ticker}`,
+        interval: intervaloAtual,
+        theme: temaAtual === 'dark' ? "dark" : "light",
+        style: tipoGrafico === "candles" ? 1 : 2,
+        locale: "br",
+        autosize: true,
+        studies: getIndicadoresParaTradingView(indicadorAtual)
+      });
+      widgetsAtivos.set(id, widget);
+    }
+
+    // Mapeia valor do select para array studies TradingView
+    function getIndicadoresParaTradingView(ind){
+      switch(ind){
+        case "VWAP": return ["VWAP@tv-basicstudies"];
+        case "MediaMovel20": return ["MASimple@tv-basicstudies:20"];
+        case "MediaMovel50": return ["MASimple@tv-basicstudies:50"];
+        case "MediaMovel20_50": return ["MASimple@tv-basicstudies:20","MASimple@tv-basicstudies:50"];
+        case "Volume": return ["Volume@tv-basicstudies"];
+        case "VWAP_Volume": return ["VWAP@tv-basicstudies","Volume@tv-basicstudies"];
+        case "MediaMovel20_Volume": return ["MASimple@tv-basicstudies:20","Volume@tv-basicstudies"];
+        default: return [];
+      }
+    }
+
+    // ======================
+    // Intersection Observer para lazy load dos gráficos
+    // ======================
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if(!entry.isIntersecting) return;
+        const el = entry.target;
+        const ticker = el.dataset.ticker;
+        criarWidget(el.id, ticker);
+        observer.unobserve(el);
+      });
+    }, {rootMargin: "300px"});
+
+    // ======================
+    // Renderiza a lista filtrada no grid
+    // ======================
+    function renderLista(){
+      const filtroT = filtroNome.value.trim().toUpperCase();
+      const filtroS = filtroSetor.value;
+      const ordem = filtroOrdenar.value;
+
+      // Apaga widgets anteriores para não vazar memória
+      widgetsAtivos.forEach((w) => {
+        if(w.remove) w.remove();
+      });
+      widgetsAtivos.clear();
+
+      // limpa grid
+      grid.innerHTML = "";
+
+      // Salva configurações no CSS custom property para layout
+      document.documentElement.style.setProperty('--columns', colunas);
+      document.documentElement.style.setProperty('--cardHeight', alturaCard + "px");
+
+      // Filtra ativos
+      let listaFiltrada = ativosBrutos.filter(a => {
+        const condNome = filtroT === "" || a.ticker.includes(filtroT);
+        const condSetor = filtroS === "" || a.setor === filtroS;
+        return condNome && condSetor;
+      });
+
+      // Ordena
+      listaFiltrada.sort((a,b) => {
+        if(ordem === "ticker"){
+          return a.ticker.localeCompare(b.ticker);
+        } else if(ordem === "setor"){
+          if(a.setor < b.setor) return -1;
+          if(a.setor > b.setor) return 1;
+          return a.ticker.localeCompare(b.ticker);
+        }
+        return 0;
+      });
+
+      // Cria cards + containers dos gráficos
+      listaFiltrada.forEach(a => {
+        const id = "tv_" + a.ticker;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.setor = a.setor;
+        card.innerHTML = `
+          <h3 title="Clique para fullscreen">${a.ticker} (${a.setor})</h3>
+          <div class="chart" id="${id}" data-ticker="${a.ticker}"></div>
+        `;
+
+        grid.appendChild(card);
+
+        // Observer vai lazy loadar o gráfico depois
+        const chartEl = document.getElementById(id);
+        observer.observe(chartEl);
+      });
+
+      atualizarHeatmap(listaFiltrada);
+    }
+
+    // ======================
+    // Atualiza o heatmap por setor
+    // ======================
+    function atualizarHeatmap(lista){
+      // Conta quantos ativos visíveis por setor
+      const contagem = {};
+      lista.forEach(a => {
+        contagem[a.setor] = (contagem[a.setor] || 0) + 1;
+      });
+
+      // Limpa heatmap
+      heatmapPanel.innerHTML = '<h2>Heatmap por Setor</h2>';
+
+      // Para todos setores possíveis
+      Object.entries(coresHeatmap).forEach(([setor, cor]) => {
+        const count = contagem[setor] || 0;
+        const div = document.createElement('div');
+        div.className = 'heatmap-sector';
+        div.textContent = setor;
+        div.style.backgroundColor = count ? cor : 'transparent';
+        div.title = `Ativos visíveis: ${count}`;
+        const span = document.createElement('span');
+        span.className = 'count';
+        span.textContent = count;
+        div.appendChild(span);
+        heatmapPanel.appendChild(div);
+      });
+    }
+
+    // ======================
+    // Alterna tema
+    // ======================
+    function alternarTema(){
+      if(temaAtual === 'light'){
+        temaAtual = 'dark';
+        document.body.classList.add('dark');
+      } else {
+        temaAtual = 'light';
+        document.body.classList.remove('dark');
+      }
+      localStorage.setItem('tema', temaAtual);
+      renderLista();
+    }
+
+    // ======================
+    // Salva layout (colunas e altura)
+    // ======================
+    function salvarLayout(){
+      localStorage.setItem('colunas', colunas);
+      localStorage.setItem('alturaCard', alturaCard);
+      alert('Layout salvo com sucesso!');
+    }
+
+    // ======================
+    // Reseta layout para padrão
+    // ======================
+    function resetarLayout(){
+      localStorage.removeItem('colunas');
+      localStorage.removeItem('alturaCard');
+      localStorage.removeItem('tema');
+      localStorage.removeItem('intervalo');
+      localStorage.removeItem('tipoGrafico');
+      localStorage.removeItem('indicador');
+      colunas = 3;
+      alturaCard = 320;
+      temaAtual = 'light';
+      intervaloAtual = 'D';
+      tipoGrafico = 'candles';
+      indicadorAtual = 'nenhum';
+      document.body.classList.remove('dark');
+      filtroNome.value = '';
+      filtroSetor.value = '';
+      filtroOrdenar.value = 'ticker';
+      filtroIntervalo.value = 'D';
+      filtroGrafico.value = 'candles';
+      filtroIndicador.value = 'nenhum';
+      renderLista();
+    }
+
+    // ======================
+    // Voltar ao topo botão
+    // ======================
+    btnTopo.addEventListener('click', () => {
+      mainContent.scrollTo({top: 0, behavior: 'smooth'});
+    });
+
+    // ======================
+    // Eventos de filtros
+    // ======================
+    filtroNome.addEventListener('input', renderLista);
+    filtroSetor.addEventListener('change', renderLista);
+    filtroOrdenar.addEventListener('change', renderLista);
+    filtroIntervalo.addEventListener('change', e => {
+      intervaloAtual = e.target.value;
+      localStorage.setItem('intervalo', intervaloAtual);
+      renderLista();
+    });
+    filtroGrafico.addEventListener('change', e => {
+      tipoGrafico = e.target.value;
+      localStorage.setItem('tipoGrafico', tipoGrafico);
+      renderLista();
+    });
+    filtroIndicador.addEventListener('change', e => {
+      indicadorAtual = e.target.value;
+      localStorage.setItem('indicador', indicadorAtual);
+      renderLista();
+    });
+    btnTema.addEventListener('click', alternarTema);
+    btnSalvar.addEventListener('click', salvarLayout);
+    btnReset.addEventListener('click', resetarLayout);
+
+    // ======================
+    // Fullscreen por ativo
+    // ======================
+    grid.addEventListener('click', e => {
+      if(e.target.tagName === 'H3'){
+        const card = e.target.closest('.card');
+        if(card.classList.contains('fullscreen')){
+          card.classList.remove('fullscreen');
+          // Força redraw do gráfico removendo e reaplicando observer:
+          const chartDiv = card.querySelector('.chart');
+          observer.observe(chartDiv);
+        } else {
+          // Fecha fullscreen em outros cards
+          document.querySelectorAll('.card.fullscreen').forEach(c => {
+            c.classList.remove('fullscreen');
+          });
+          card.classList.add('fullscreen');
+          // Força redraw removendo e reaplicando observer:
+          const chartDiv = card.querySelector('.chart');
+          observer.observe(chartDiv);
+        }
+      }
+    });
+
+    // ======================
+    // Inicialização
+    // ======================
+    // Aplica tema salvo
+    if(temaAtual === 'dark') {
+      document.body.classList.add('dark');
+    }
+
+    // Aplica colunas e altura do layout no CSS root
+    document.documentElement.style.setProperty('--columns', colunas);
+    document.documentElement.style.setProperty('--cardHeight', alturaCard + "px");
+
+    // Render inicial
+    renderLista();
+
+  })();
+  </script>
+</body>
+</html>
